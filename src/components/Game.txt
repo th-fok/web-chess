@@ -1,0 +1,616 @@
+<template>
+  <div class="main-area">
+      <div class="board">
+        <div v-for="(coord, index) in flippedCoords" :key="index"
+          :class="`square ${isAtBlackSquare(coord) ? 'black' : 'white'} `"
+          :id="`square-${coord}`"
+          @drop.prevent="handleDrop($event, coord)"
+          @dragover.prevent
+          @click="pieceClick($event)"
+          :data-coord="coord">
+
+          <div v-if="possibleMoves.includes(coord)" class="possible-move"></div>
+          <img v-if="figureAt(coord) != '.'"
+            :id="`figure-${figureAt(coord)}`"
+            :src="`/src/ico/${figuresSRC.get(figureAt(coord))}`"
+            draggable="true"
+            @dragstart="handleDragStart($event, coord)">
+        </div>
+      </div>
+      <div class="controls">
+        <button class="control-button flip-button" @click="flipBoard()"><img :src="getButtonIcon('flip')"></button>
+      </div>
+  </div>
+</template>
+
+<script>
+
+export default {
+  data() {
+    return {
+      possibleMoves:[],
+
+      selectedFigure:'',
+      startCoord: -1,
+
+      isFliped: false,
+      isWhiteTurn: true,
+
+      figuresSRC: new Map([
+        ['R', 'wRook.png'],
+        ['N', 'wKnight.png'],
+        ['B', 'wBishop.png'],
+        ['Q', 'wQueen.png'],
+        ['K', 'wKing.png'],
+        ['P', 'wPawn.png'],
+        ['r', 'bRook.png'],
+        ['n', 'bKnight.png'],
+        ['b', 'bBishop.png'],
+        ['q', 'bQueen.png'],
+        ['k', 'bKing.png'],
+        ['p', 'bPawn.png'],
+      ]),
+      startfigures: (
+        'rnbqkbnr' +
+        'pppppppp' +
+        '........' +
+        '........' +
+        '........' +
+        '........' +
+        'PPPPPPPP' +
+        'RNBQKBNR'
+      ),
+      figures: (
+        'rnbqkbnr' +
+        'pppppppp' +
+        '........' +
+        '........' +
+        '........' +
+        '........' +
+        'PPPPPPPP' +
+        'RNBQKBNR'
+      ),
+    };
+  },
+  computed:
+  {
+    flippedCoords() {
+      return this.isFliped ? Array.from({ length: 64 }, (blank, i) => 64 - i) : Array.from({ length: 64 }, (blank, i) => i + 1);
+    }
+  },
+  methods:
+  {
+  isInCheck(isWhite) {
+    const kingCoord = this.findKing(isWhite);
+    const opponentMoves = this.getAllOpponentMoves(!isWhite);
+    return opponentMoves.includes(kingCoord);
+  },
+  
+  findKing(isWhite) {
+    const kingChar = isWhite ? 'K' : 'k';
+    return this.figures.indexOf(kingChar) + 1; // Возвращает координаты короля
+  },
+
+  isCheckmate(isWhite) {
+    if (!this.isInCheck(isWhite)) {
+      return false; // Король не под шахом
+    }
+
+    // Сбрасываем возможные ходы перед проверкой
+    this.possibleMoves = []; 
+
+    for (let i = 1; i <= 64; i++) {
+      const figure = this.figureAt(i);
+      if ((isWhite && figure === figure.toUpperCase()) || (!isWhite && figure === figure.toLowerCase())) {
+        this.calculatePossibleMoves(i); // Заполняем this.possibleMoves для этой фигуры
+        if (this.possibleMoves.length > 0) {
+          return false; // Есть доступные ходы, значит, это не мат
+        }
+      }
+    }
+    return true; // Король под шахом и нет доступных ходов
+  },
+  
+  isStalemate(isWhite) {
+    if (this.isInCheck(isWhite)) {
+      return false; // Если король под шахом, это не пат
+    }
+
+    // Сбрасываем возможные ходы перед проверкой
+    this.possibleMoves = []; 
+
+    for (let i = 1; i <= 64; i++) {
+      const figure = this.figureAt(i);
+      if ((isWhite && figure === figure.toUpperCase()) || (!isWhite && figure === figure.toLowerCase())) {
+        this.calculatePossibleMoves(i); // Заполняем this.possibleMoves для этой фигуры
+        console.log(this.possibleMoves.length);
+        if (this.possibleMoves.length > 0) {
+          return false; // Есть доступные ходы, значит, это не пат
+        }
+      }
+    }
+    return true; // Нет доступных ходов и король не под шахом
+  },
+
+  getAllOpponentMoves(isWhite) {
+    const moves = [];
+    for (let i = 1; i <= 64; i++) {
+      const figure = this.figureAt(i);
+      if ((isWhite && figure === figure.toLowerCase()) || (!isWhite && figure === figure.toUpperCase())) {
+        continue; // Пропускаем фигуры своего цвета
+      }
+      this.calculatePossibleMoves(i); // Заполняем this.possibleMoves для этой фигуры
+      moves.push(...this.possibleMoves); // Добавляем возможные ходы в общий массив
+    }
+    return moves;
+  },
+  getButtonIcon(action) {
+    const theme = this.$store.state.selectedTheme;
+    return theme === 'dark' ? `/src/ico/${action}-dark.png` : `/src/ico/${action}-light.png`;
+  },
+  reset() {
+    this.figures = this.startfigures;
+    this.possibleMoves = [];
+
+     this.selectedFigure = '';
+     this.startCoord = -1;
+
+    this.isWhiteTurn = true;
+
+    console.clear();
+  },
+  flipBoard() {
+    this.isFliped = !this.isFliped;
+    this.possibleMoves = [];
+  },
+  isAtBlackSquare(coord) {
+    return (Math.floor((coord - 1) / 8) + (coord - 1) % 8) % 2 === 1;
+  },
+  figureAt(coord) {
+    return this.figures.charAt(coord - 1);
+  },
+  handleDragStart(event, coord) {
+    event.dataTransfer.setData('text', coord);
+    this.calculatePossibleMoves(coord);
+  },
+  handleDrop(event, coord) {
+    const figureCoord = parseInt(event.dataTransfer.getData('text'));
+    
+    // Проверка, принадлежит ли фигура текущему игроку
+    const figure = this.figureAt(figureCoord);
+    const isCurrentPlayerFigure = (figure === figure.toUpperCase()) !== this.isFliped;
+    // Если фигура не принадлежит текущему игроку, отменяем действие
+    if (!isCurrentPlayerFigure) {
+        return;
+    }
+    if (this.isWhiteTurn !== (figure === figure.toUpperCase())) {
+        return;
+    }
+    // Проверяем, есть ли возможный ход на целевой координате
+    const targetSquare = document.querySelector(`#square-${coord} .possible-move`);
+    if (!targetSquare) {
+        return; // Если на целевой координате нет div.possible-move, отменяем действие
+    }
+    // Выполняем перемещение фигуры
+    this.moveFigure(figureCoord, coord);
+    this.startCoord = -1;
+  },
+
+  pieceClick(event) {
+    const coord = parseInt(event.currentTarget.getAttribute('data-coord'));
+    const targetFigure = this.figureAt(coord);
+
+    // Определяем, принадлежит ли фигура текущему игроку
+    const isCurrentPlayerFigure = (targetFigure === targetFigure.toUpperCase()) !== this.isFliped;
+
+    // Если фигура не принадлежит текущему игроку и это не возможный ход
+    if (!isCurrentPlayerFigure && !this.possibleMoves.includes(coord)) {
+        return;
+    }
+
+    // Если startCoord еще не выбран
+    if (this.startCoord === -1) {        
+        this.startCoord = coord;
+        this.calculatePossibleMoves(coord);
+    } else {
+        // Проверяем, есть ли возможный ход на целевой координате
+        if (!this.possibleMoves.includes(coord)) {
+            this.startCoord = -1; // Сбрасываем startCoord
+            this.possibleMoves = [];
+            return; // Если нет возможного хода, выходим
+        }
+        // Если startCoord уже выбран, значит, мы должны переместить фигуру
+        this.moveClick(coord);
+    }
+},
+    validateMove(figureCoord, coord) {
+        const figuresArray = this.figures.split('');
+        const figure = figuresArray[figureCoord - 1];
+        const isWhite = this.isWhiteTurn;
+
+        const moveValidators = {
+            'b': this.canMoveBishop,
+            'p': this.canMovePawn,
+            'n': this.canMoveKnight,
+            'r': this.canMoveRook,
+            'q': this.canMoveQueen,
+            'k': this.canMoveKing,
+        };
+
+        const pieceType = figure.toLowerCase();
+        const moveValidator = moveValidators[pieceType];
+
+        return moveValidator && moveValidator.call(this, figureCoord, coord, isWhite);
+    },
+    moveClick(coord) {
+      if (this.startCoord === - 1) { return; }
+      if (!this.possibleMoves.includes(coord)) {
+        this.startCoord = - 1;
+        this.possibleMoves =[];
+        return;
+      }
+
+      const figureCoord = this.startCoord;
+
+      if (!this.validateMove(figureCoord, coord)){return;}
+          
+      // Выполняем перемещение фигуры
+      this.moveFigure(figureCoord, coord);
+      this.startCoord = -1;
+    },
+    
+    calculatePossibleMoves(coord) {
+      const figure = this.figureAt(coord);
+      
+      const isCurrentPlayerWhite = !this.isFliped;
+
+      this.possibleMoves = [];
+
+      console.log('=');
+      if ((isCurrentPlayerWhite && (figure.toUpperCase() === figure) ) || 
+      (!isCurrentPlayerWhite && (figure.toLowerCase() === figure) )) {
+        console.log('+');
+        const moveCalculators = {
+          'q': this.canMoveQueen,
+          'k': this.canMoveKing,
+          'b': this.canMoveBishop,
+          'n': this.canMoveKnight,
+          'r': this.canMoveRook,
+          'p': this.canMovePawn,
+        };
+
+        const pieceType = figure.toLowerCase();
+        const moveCalculator = moveCalculators[pieceType];
+
+        if (moveCalculator) {
+          for (let i = 1; i <= 64; i++) {
+            if (moveCalculator.call(this, coord, i, isCurrentPlayerWhite)) {
+              this.possibleMoves.push(i);
+            };
+          };
+        };
+      };
+    },    
+    moveFigure(startCoord, endCoord) {
+      const figuresArray = this.figures.split('');
+      const figure = figuresArray[startCoord - 1];
+    
+      figuresArray[startCoord - 1] = '.'; // Убираем фигуру с текущей позиции
+      figuresArray[endCoord - 1] = figure; // Ставим фигуру на новое место
+      this.figures = figuresArray.join('');
+      this.isWhiteTurn = !this.isWhiteTurn; // Смена очередности
+
+      // Проверка на шах, мат и пат
+      if (this.isCheckmate(this.isWhiteTurn)) {
+        alert('Мат! Игра окончена.');
+        // Логика для завершения игры
+      } else if (this.isStalemate(this.isWhiteTurn)) {
+        alert('Пат! Игра окончена.');
+        // Логика для завершения игры
+      };
+      this.possibleMoves = [];
+    },
+    isPathClear(startCoord, endCoord, isDiagonal = false) {
+      const startRow = Math.floor((startCoord - 1) / 8);
+      const startCol = (startCoord - 1) % 8;
+      const endRow = Math.floor((endCoord - 1) / 8);
+      const endCol = (endCoord - 1) % 8;
+      const rowDir = endRow > startRow ? 1 : -1;
+      const colDir = endCol > startCol ? 1 : -1;
+
+      const rowStep = endRow === startRow ? 0 : rowDir;
+      const colStep = endCol === startCol ? 0 : colDir;
+
+      let currentRow = startRow + rowStep;
+      let currentCol = startCol + colStep;
+
+      // Проверка по диагонали
+      if (isDiagonal) {
+        const colDiff = Math.abs(endCol - startCol);
+        const rowDiff = Math.abs(endRow - startRow);
+        if (colDiff !== rowDiff) {
+          return false; // Не по диагонали
+        }
+      } else {
+        // Проверка, что движение по горизонтали или вертикали
+        if (!(currentRow === startRow || currentCol === startCol)) {
+          return false;
+        }
+      }
+
+      while (currentRow !== endRow || currentCol !== endCol) {
+        const currentCoord = currentRow * 8 + currentCol + 1; // Преобразуем обратно в координаты
+        if (this.figureAt(currentCoord) !== '.') {
+          return false; // На пути есть фигура
+        }
+        currentRow += rowStep;
+        currentCol += colStep;
+      }
+
+      return true; // Путь свободен
+    },
+    canBeCaptured(isWhite, endCoord) {
+      const targetFigure = this.figureAt(endCoord);
+      
+      // Если целевая фигура - король, её нельзя захватить
+      if (targetFigure.toLowerCase() === 'k') {
+        return false; 
+      };
+      
+      // Если целевая фигура пустая, захват невозможен
+      if (targetFigure === '.') {
+        return false; 
+      }
+      
+      // Определяем цвет целевой фигуры
+      const isTargetWhite = targetFigure === targetFigure.toUpperCase();
+    
+      // Если цвет целевой фигуры совпадает с цветом текущей фигуры, захват невозможен
+      return isWhite !== isTargetWhite; 
+    },
+    canMovePawn(startCoord, endCoord, isWhite) {
+      const direction = isWhite ? - 1 : 1; // Направление движения
+      const startRow = Math.floor((startCoord - 1) / 8);
+      const endRow = Math.floor((endCoord - 1) / 8);
+      
+      const rowDiff = Math.abs(startRow - endRow);
+
+      if (rowDiff === 0) {
+        return false;
+      };
+      // Проверка первого хода (движение на 2 клетки)
+      if (startRow === (isWhite ? 6 : 1) && endCoord === startCoord + 16 * direction && this.figureAt(endCoord) === '.' && this.figureAt(startCoord + 8 * direction) === '.') {
+        return true;
+      };
+
+      // Проверка обычного хода
+      if (endCoord === startCoord + 8 * direction && this.figureAt(endCoord) === '.') {
+        return true;
+      };
+
+      // Проверка взятия
+      if ( !(endCoord === startCoord + 7 * direction || endCoord === startCoord + 9 * direction) ) {  
+        return false;
+      };
+
+      return this.canBeCaptured(isWhite, endCoord);
+    },
+    canMoveQueen(startCoord, endCoord, isWhite) {
+      const colDiff = Math.abs((endCoord - 1) % 8 - (startCoord - 1) % 8);
+      const rowDiff = Math.abs(Math.floor((endCoord - 1) / 8) - Math.floor((startCoord - 1) / 8));
+
+      // Проверка, что ферзь движется по горизонтали, вертикали или диагонали
+      if (colDiff === 0 && rowDiff === 0) {
+        return false; // Не может оставаться на месте
+      }
+      if (colDiff !== rowDiff && colDiff !== 0 && rowDiff !== 0) {
+        return false; // Ферзь не может двигаться по диагонали и горизонтали одновременно
+      }
+    
+      // Проверка на наличие фигур на пути
+      if (!this.isPathClear(startCoord, endCoord, colDiff === rowDiff)) {
+        return false; // На пути есть фигура
+      }
+    
+      // Проверка на возможность захвата
+      return this.canBeCaptured(isWhite, endCoord) || this.figureAt(endCoord) === '.';
+    },
+    canMoveKing(startCoord, endCoord, isWhite) {
+      
+      const colDiff = Math.abs((endCoord - 1) % 8 - (startCoord - 1) % 8);
+      const rowDiff = Math.abs(Math.floor((endCoord - 1) / 8) - Math.floor((startCoord - 1) / 8));
+
+      // Проверка, что король движется на одну клетку в любом направлении
+      if (colDiff > 1 || rowDiff > 1) {
+        return false; // Недопустимый ход
+      }
+
+      // Проверка, что король движется по горизонтали, вертикали или диагонали
+      if (colDiff === 0 && rowDiff === 0) {
+        return false; // Не может оставаться на месте
+      }
+      if (colDiff !== rowDiff && colDiff !== 0 && rowDiff !== 0) {
+        return false; // Король не может двигаться по диагонали и горизонтали одновременно
+      }
+    
+      // Проверка на наличие фигур на пути
+      if (!this.isPathClear(startCoord, endCoord, colDiff === rowDiff)) {
+        return false; // На пути есть фигура
+      }
+    
+      // Проверка на возможность захвата
+      return this.canBeCaptured(isWhite, endCoord) || this.figureAt(endCoord) === '.';
+    },
+    canMoveBishop(startCoord, endCoord, isWhite) {
+      const colDiff = Math.abs((endCoord - 1) % 8 - (startCoord - 1) % 8);
+      const rowDiff = Math.abs(Math.floor((endCoord - 1) / 8) - Math.floor((startCoord - 1) / 8));
+
+      // Проверка, что слон движется по диагонали
+      if (colDiff !== rowDiff) {
+        return false; // Недопустимый ход
+      }
+    
+      // Проверка на наличие фигур на пути
+      if (!this.isPathClear(startCoord, endCoord, true)) {
+        return false; // На пути есть фигура
+      }
+    
+      // Проверка на возможность захвата
+      return this.canBeCaptured(isWhite, endCoord) || this.figureAt(endCoord) === '.';
+    },    
+    canMoveKnight(startCoord, endCoord, isWhite) {
+      const rowDiff = Math.abs(Math.floor((startCoord - 1) / 8) - Math.floor((endCoord - 1) / 8));
+      const colDiff = Math.abs((startCoord - 1) % 8 - (endCoord - 1) % 8);
+
+      // Проверка, что конь движется в форме буквы "Г"
+      if (!((rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2))) {
+        return false; // Недопустимый ход
+      }
+    
+      // Проверка на возможность захвата
+      return this.canBeCaptured(isWhite, endCoord) || this.figureAt(endCoord) === '.';
+    },
+    canMoveRook(startCoord, endCoord, isWhite) {
+      const colDiff = Math.abs((endCoord - 1) % 8 - (startCoord - 1) % 8);
+      const rowDiff = Math.abs(Math.floor((endCoord - 1) / 8) - Math.floor((startCoord - 1) / 8));
+
+      // Проверка, что ладья движется по горизонтали или вертикали
+      if (colDiff === 0 && rowDiff === 0) {
+        return false; // Не может оставаться на месте
+      }
+      if (colDiff !== 0 && rowDiff !== 0) {
+        return false; // Ладья не может двигаться по диагонали
+      }
+    
+      // Проверка на наличие фигур на пути
+      if (!this.isPathClear(startCoord, endCoord)) {
+        return false; // На пути есть фигура
+      }
+    
+      // Проверка на возможность захвата
+      return this.canBeCaptured(isWhite, endCoord) || this.figureAt(endCoord) === '.';
+    },
+  }
+}
+</script>
+
+<style scoped>
+.main-area {
+  width: -webkit-fill-available;
+  display: flex;
+}
+
+.board {
+  box-sizing: border-box;
+  max-width: 640px; /* Максимальная ширина для больших экранов */
+  width: 70vw; /* Используйте относительные единицы для ширины доски */
+  aspect-ratio: 1;
+  border: 20px solid var(--border-color); /* Используем переменную для цвета границы */
+  margin: 0;
+}
+
+.square {
+  position: relative;
+  float: left;
+  width: 12.5%; /* Измените размер квадратов в зависимости от ширины доски */
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.black {
+  background-color: var(--cell-background-black); /* Используем переменную для темного фона */
+}
+
+.white {
+  background-color: var(--cell-background-white); /* Используем переменную для светлого фона */
+}
+
+.possible-move {
+  width: 75%;
+  aspect-ratio: 1;
+  background-color: rgba(40, 65, 65, 0.5); /* Можно оставить как есть, если не нужно менять */
+  border-radius: 50%;
+  position: absolute;
+  z-index: 1;
+}
+
+.controls {
+   display: flex;
+   flex-direction: column; /* Вертикальное расположение кнопок */
+   max-height: calc(640px - 20px);
+   height: calc(70vw - 20px);
+   gap: 10px; /* Отступ между кнопками */
+   padding: 10px; /* Отступ внутри блока управления */
+   background-color: var(--background-color); /* Используем переменную для фона блока управления */
+   border: 1px solid var(--border-color); /* Используем переменную для цвета границы */
+   border-radius: 2px; /* Скругление углов */
+   background-color: var(--background-color);
+}
+
+.control-button {
+  width: 50px; /* Установите желаемую ширину */
+  height: 50px; /* Установите фиксированную высоту */
+  display: flex; /* Используйте flex для выравнивания содержимого */
+  align-items: center; /* Центрирование по вертикали */
+  justify-content: center; /* Центрирование по горизонтали */
+  background-color: var(--background-color-light);
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.3s;
+}
+
+.control-button img {
+  width: 100%; /* Установите ширину изображения на 100% от кнопки */
+  height: auto; /* Автоматическая высота для сохранения пропорций */
+}
+
+.control-button:hover {
+  background-color: var(--background-color-dark); /* Используем переменную для цвета фона при наведении */
+  transform: scale(1.01); /* Увеличение кнопки при наведении */
+}
+
+/* Адаптация для фигур */
+.square img {
+  width: 70%; /* Устанавливаем ширину фигур относительно квадрата */
+  height: auto; /* Автоматическая высота для сохранения пропорций */
+}
+
+/* Медиазапросы для мобильных устройств */
+@media (max-width: 768px) {
+  .main-area {
+    align-items: center;
+      flex-direction: column;
+  }
+  .board {
+    width: 90vw; /* Увеличьте ширину доски на мобильных устройствах */
+    height: 90vw; /* Высота равна ширине для квадратной формы */
+  }
+
+   .square {
+       width: 12.5%; /* Измените размер квадратов для лучшего отображения на мобильных */
+       height: 12.5%; /* Высота равна ширине для квадратной формы */
+   }
+
+   .controls {
+       flex-direction: row; /* Измените направление кнопок на ряд для мобильных устройств */
+       justify-content: space-around; /* Распределите кнопки равномерно */
+   }
+
+   .square img {
+       width: 70%; /* Уменьшите размер фигур для мобильных устройств */
+   }
+}
+</style>
+
+
+<!-- Доделать на проходе -->
+ <!-- Сделать шах -->
+  <!-- Сделать мат -->
+   <!-- Сделать проверку на пат -->
+    <!-- Сделать рокировку -->
+     <!-- Сделать проверку на рокировку -->
+      <!-- Сделать проверку и невозможность ходить королям друг к другу -->
+       <!-- Сделать Таймер -->

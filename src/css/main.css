@@ -1,0 +1,84 @@
+:root {
+  /* Светлая тема */
+  --background-color: #FFFFFF; /* Основной фон */
+  --background-color-light: #F9F9F9; /* Светлый фон */
+  --background-color-dark: #EAEAEA; /* Темный фон для элементов */
+
+  --text-color: #000000; /* Основной цвет текста */
+  --text-color-light: #555555; /* Светлый цвет текста */
+  --text-color-dark: #333333; /* Темный цвет текста для заголовков */
+
+  --link-color: #FF0000; /* Цвет ссылок (красный) */
+  --link-color-hover: #CC0000; /* Цвет ссылок при наведении (темно-красный) */
+  
+  --button-background: #FF0000; /* Фон кнопок (красный) */
+  --button-background-hover: #CC0000; /* Фон кнопок при наведении (темно-красный) */
+  --button-text-color: #FFFFFF; /* Цвет текста на кнопках */
+  
+  --border-color: #DDDDDD; /* Цвет границ */
+
+  /* Стили для переключателя */
+  --switch-background-off: #DDDDDD; /* Фон переключателя в состоянии "выключено" */
+  --switch-background-on: #FF0000; /* Фон переключателя в состоянии "включено" */
+  --switch-slider-off: #FFFFFF; /* Цвет ползунка в состоянии "выключено" */
+  --switch-slider-on: #FFFFFF; /* Цвет ползунка в состоянии "включено" */
+
+  /* Цвета для клеток */
+  --cell-background-white: #f0f0f0;
+  --cell-background-black: #c0c0c0;
+}
+
+.dark-theme {
+  /* Темная тема */
+  --background-color: #181818; /* Основной фон для темной темы */
+  --background-color-light: #303030; /* Светлый фон для темной темы */
+  --background-color-dark: #121212; /* Темный фон для элементов */
+
+  --text-color: #FFFFFF; /* Цвет текста для темной темы */
+  --text-color-light: #AAAAAA; /* Светлый цвет текста для темной темы */
+  --text-color-dark: #DDDDDD; /* Темный цвет текста для заголовков в темной теме */
+
+  --link-color: #FF0000; /* Цвет ссылок (красный) */
+  --link-color-hover: #CC0000; /* Цвет ссылок при наведении (темно-красный) */
+  
+  --button-background: #FF0000; /* Фон кнопок (красный) */
+  --button-background-hover: #CC0000; /* Фон кнопок при наведении (темно-красный) */
+  --button-text-color: #FFFFFF; /* Цвет текста на кнопках */
+  
+  --border-color: #444444; /* Цвет границ для темной темы */
+
+  /* Стили для переключателя */
+  --switch-background-off: #444444; /* Фон переключателя в состоянии "выключено" для темной темы */
+  --switch-background-on: #FF0000; /* Фон переключателя в состоянии "включено" для темной темы */
+  --switch-slider-off: #222222; /* Цвет ползунка в состоянии "выключено" для темной темы */
+  --switch-slider-on: #FFFFFF; /* Цвет ползунка в состоянии "включено" для темной темы */
+  
+  /* Цвета для клеток */
+  --cell-background-white: #7a7a7a;
+  --cell-background-black: #3a3a3a;
+}
+
+.visually-impaired {
+  /* Стиль для дальтоников */
+  --link-color: #0000FF; /* Цвет ссылок (синий) */
+  --link-color-hover: #0000CC; /* Цвет ссылок при наведении (темно-синий) */
+  
+  --button-background: #007BFF; /* Фон кнопок (синий) */
+  --button-background-hover: #0056b3; /* Фон кнопок при наведении (темно-синий) */
+  --button-text-color: #FFFFFF; /* Цвет текста на кнопках */
+  
+  --border-color: #DDDDDD; /* Цвет границ */
+  
+  /* Стили для переключателя */
+  --switch-background-off: #DDDDDD; /* Фон переключателя в состоянии "выключено" */
+  --switch-background-on: #007BFF; /* Фон переключателя в состоянии "включено" */
+}
+
+a {
+  color: var(--link-color);
+}
+
+.save-button {
+  background-color: var(--button-background);
+  color: var(--button-text-color);
+}
